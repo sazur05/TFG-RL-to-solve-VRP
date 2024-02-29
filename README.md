@@ -8,6 +8,7 @@ The architecture and the main structure of the code is similar to the paper of N
 *The static tensor is modified to use fixed locations. (Just in the validation tensor and in the test tensor)
 *We add some KPIs in the Main to undertand the evolution of the knowledge of the Agent in an easier way 
 *Finally, we add a new implementation to test the model using the parameters obteined in the training.
+
 There exists a tesis with much more detail of the framework, where it is explained all the history of the Aquaculture, why an implemetation of Deep Reinforcement Learning is interesting (also an explanation of its competitors and an overview of Deep Learning and Reinforcement Learning), a description of the model and a set of experiments to optimize the variables used in the model.
 ## Dependancies
 certifi==2023.5.7
