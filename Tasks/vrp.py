@@ -18,14 +18,13 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-##Para el cambio de las posiciones fijas tuve que cambiar las variables de entrada de la clase, añadí las entradas STATIC_SIZE = 2 y static_locations = None
+
 class VehicleRoutingDataset(Dataset):
     def __init__(self, num_samples, input_size, max_load=20, max_demand=9,
                  static_locations=None,
                  static_locations_final=None, STATIC_SIZE=2, seed=None):
         super(VehicleRoutingDataset, self).__init__()
         #super() se utiliza para llamar a un método usado en la clase padre, esta llamada se utiliza en las clases hijas a modo de herencia
-        #1er cambio: 20 localizaciones fijas para los clientes de una empresa (empresa proveedora debe satisfacer las necesidades de sus clientes, fijos e inalterables)
 
         if max_load < max_demand:
             raise ValueError(':param max_load: must be > max_demand')
@@ -39,9 +38,7 @@ class VehicleRoutingDataset(Dataset):
         self.num_samples = num_samples
         self.max_load = max_load
         self.max_demand = max_demand
-        ##Cambio aquí no había inicializado la variable STATIC_SIZE
         self.STATIC_SIZE = STATIC_SIZE
-        #Añadí estas dos líneas de código para inicializar el tensor de las localizaciones antes del apartado de entrenamiento, para que realmente esas localizaciones sean fijas
         if static_locations is None:
             if num_samples == 'args.valid_size':
                 static_locations = generador_coordenadas_clientes(input_size, STATIC_SIZE)
@@ -54,38 +51,27 @@ class VehicleRoutingDataset(Dataset):
             elif num_samples == 'args.train_size':
                 static_locations_final = generador_static_entrenamiento(num_samples, STATIC_SIZE, input_size)
 
-        #1er cambio: locations = torch.rand((num_samples, 2, input_size + 1)) -->
         self.static = static_locations_final
 
         # All states will broadcast the drivers current load
         # Note that we only use a load between [0, 1] to prevent large
         # numbers entering the neural network
         dynamic_shape = (num_samples, 1, input_size + 1)
-        ##3er cambio: Demandas y cargas distintas
-        ##Añadir otra variable. loads2 = torch.full(dynamic_shape, valor a usar)
-        ##torch.full--> crea un tensor de dimensiones especificadas y con un valor de relleno torch.full(dim_size, fill_value)
         loads = torch.full(dynamic_shape, 1.)
-        ##Concatenar ambas variables en un tensor final llamado cargas totales (un mismo vehículo puede afrontar dos tipos de pedidos distintos)
-
 
         # All states will have their own intrinsic demand in [1, max_demand), 
         # then scaled by the maximum load. E.g. if load=10 and max_demand=30, 
         # demands will be scaled to the range (0, 3)
-        ##3er cambio: Añadir otra variable demands con el otro tipo de demandas y volver a concatenar ambos tensores
         demands = torch.randint(1, max_demand + 1, dynamic_shape)
         demands = demands / float(max_load)
 
-        ##Hay que modificar este comando de manera que el depóstio tenga ambas demandas en el instante 0 sean nulas
-        demands[:, 0, 0] = 0  # depot starts with a demand of 0
+        demands[:, 0, 0] = 0
         self.dynamic = torch.tensor(np.concatenate((loads, demands), axis=1))
 
     def __len__(self):
         return self.num_samples
 
     def __getitem__(self, idx):
-        # (static, dynamic, start_loc)
-        ##print(f'El tensor static es del tipo: {self.static.type}')
-        ##print(f'Salida del depóstio: {self.static[idx, :, 0:1]}')
         return (self.static[idx], self.dynamic[idx], self.static[idx, :, 0:1])
 
     ### Overrides method in DataSet significa que en este script se ha utilizado un conjunto de datos personalizado
@@ -113,22 +99,22 @@ class VehicleRoutingDataset(Dataset):
         new_mask = demands.ne(0) * demands.lt(loads)
 
         # We should avoid traveling to the depot back-to-back
-        repeat_home = chosen_idx.ne(0) ## & choosen_idx.ne(1) (debemos asegurarnos que ninguno de los dos depositos es escogido)
+        repeat_home = chosen_idx.ne(0)
 
         if repeat_home.any():
-            new_mask[repeat_home.nonzero(), 0] = 1. #### new_mask[repeat_home.nonzero(), : 2] = 1. Actualiza las dos primeras columnas (son las que están referidas a ambos depósitos)
-        #Sergio: Cambio del original 1- repeat_home--> ~repeat_home
+            new_mask[repeat_home.nonzero(), 0] = 1.
+
         if (~repeat_home).any():
-            new_mask[(~repeat_home).nonzero(), 0] = 0. ###new_mask[repeat_home.nonzero(), : 2] = 0.
+            new_mask[(~repeat_home).nonzero(), 0] = 0.
 
         # ... unless we're waiting for all other samples in a minibatch to finish
-        has_no_load = loads[:, 0].eq(0).float() ###has_no_load = loads[:, :2].eq(0).float()
-        has_no_demand = demands[:, 1:].sum(1).eq(0).float() ###has_no_demand = demands[:, 2:].sum(1).eq(0).float()
+        has_no_load = loads[:, 0].eq(0).float()
+        has_no_demand = demands[:, 1:].sum(1).eq(0).float()
 
         combined = (has_no_load + has_no_demand).gt(0)
         if combined.any():
-            new_mask[combined.nonzero(), 0] = 1. ##new_mask[combined.nonzero(), :2] = 1.
-            new_mask[combined.nonzero(), 1:] = 0. ##new_mask[combined.nonzero(), 2:] = 0.
+            new_mask[combined.nonzero(), 0] = 1.
+            new_mask[combined.nonzero(), 1:] = 0.
 
         return new_mask.float()
 
@@ -136,8 +122,8 @@ class VehicleRoutingDataset(Dataset):
         """Updates the (load, demand) dataset values."""
 
         # Update the dynamic elements differently for if we visit depot vs. a city
-        visit = chosen_idx.ne(0)  # & visit = chosen_idx.ne(1)
-        depot = chosen_idx.eq(0) #visit = chosen_idx.eq(1)
+        visit = chosen_idx.ne(0)
+        depot = chosen_idx.eq(0)
 
         # Clone the dynamic variable so we don't mess up graph
         all_loads = dynamic[:, 0].clone()
@@ -159,8 +145,7 @@ class VehicleRoutingDataset(Dataset):
 
             all_loads[visit_idx] = new_load[visit_idx]
             all_demands[visit_idx, chosen_idx[visit_idx]] = new_demand[visit_idx].view(-1)
-            all_demands[visit_idx, 0] = -1. + new_load[visit_idx].view(-1) #all_demands[visit_idx, :2
-            # ] = -1. + new_load[visit_idx].view(-1)
+            all_demands[visit_idx, 0] = -1. + new_load[visit_idx].view(-1)
 
         # Return to depot to fill vehicle load
         if depot.any():
