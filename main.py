@@ -17,7 +17,7 @@ from Tasks.vrp import VehicleRoutingDataset
 from Models.critc import StateCritic
 
 torch.backends.cudnn.benchmark = True
-torch.backends.cudnn.enabled=False
+torch.backends.cudnn.enabled = False
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Detected device {}'.format(device))
 
@@ -278,6 +278,7 @@ def train_vrp(args):
 
     test_dir = 'test'
     test_loader = DataLoader(test_data, args.batch_size, False, num_workers=0)
+    ## El dataLoader es la clase principal para cargar los datos con una serie de características que el usuario desee
     out = validate(test_loader, actor, vrp.reward, vrp.render, test_dir, num_plot=5)
 
     print('Average tour length: ', out)
@@ -294,16 +295,16 @@ if __name__ == '__main__':
     parser.add_argument('--checkpoint', default=None)
     parser.add_argument('--test', action='store_true', default=False)
     parser.add_argument('--task', default='vrp')
-    parser.add_argument('--nodes', dest='num_nodes', default=20, type=int)
+    parser.add_argument('--nodes', dest='num_nodes', default=50, type=int)
     parser.add_argument('--actor_lr', default=5e-4, type=float)
     parser.add_argument('--critic_lr', default=5e-4, type=float)
     parser.add_argument('--max_grad_norm', default=2., type=float)
-    parser.add_argument('--batch_size', default=128, type=int)
-    parser.add_argument('--hidden', dest='hidden_size', default=128, type=int)
+    parser.add_argument('--batch_size', default=30, type=int)
+    parser.add_argument('--hidden', dest='hidden_size', default=30, type=int)
     parser.add_argument('--dropout', default=0.1, type=float)
     parser.add_argument('--layers', dest='num_layers', default=1, type=int)
-    parser.add_argument('--train-size',default=1000, type=int) ## Entradas para ver el modelo, en la fase de mejora del código disminuimo el número de instancias del modelo de entrenamiento y validación
-    parser.add_argument('--valid-size', default=10, type=int) ##20% del conjunto de entrenamiento
+    parser.add_argument('--train-size', default=120, type=int) ## Entradas para ver el modelo, en la fase de mejora del código disminuimo el número de instancias del modelo de entrenamiento y validación
+    parser.add_argument('--valid-size', default=1, type=int) ##20% del conjunto de entrenamiento
 
     args = parser.parse_args()
 
